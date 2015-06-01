@@ -22,6 +22,7 @@
 #include <ostream>
 
 #include "misc.h"
+#include "search.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -34,7 +35,7 @@ UCI::OptionsMap Options; // Global object
 namespace UCI {
 
 /// 'On change' actions, triggered by an option's value change
-void on_clear_hash(const Option&) { TT.clear(); }
+void on_clear_hash(const Option&) { Search::reset(); }
 void on_hash_size(const Option& o) { TT.resize(o); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option&) { Threads.read_uci_options(); }
@@ -169,6 +170,8 @@ Option& Option::operator=(const string& v) {
 #include <iostream>
 #include <sstream>
 
+static std::map<std::string, int> TuneResults;
+
 string Tune::next(string& names, bool pop) {
 
   string name;
@@ -196,6 +199,12 @@ static void make_option(const string& n, int v, const SetRange& r) {
   if (r(v).first == r(v).second)
       return;
 
+<<<<<<< HEAD
+=======
+  if (TuneResults.count(n))
+      v = TuneResults[n];
+
+>>>>>>> d40d0ce55d8bcd2cb275132465b8478775395f8f
   Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
 
   // Print formatted parameters, ready to be copy-pasted in fishtest
@@ -227,10 +236,28 @@ template<> void Tune::Entry<Score>::init_option() {
 }
 
 template<> void Tune::Entry<Score>::read_option() {
-  if (Options.count("m" + name) || Options.count("e" + name))
-      value = make_score(Options["m" + name], Options["e" + name]);
+
+  if (Options.count("m" + name))
+      value = make_score(Options["m" + name], eg_value(value));
+
+  if (Options.count("e" + name))
+      value = make_score(mg_value(value), Options["e" + name]);
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it
 template<> void Tune::Entry<Tune::PostUpdate>::init_option() {}
 template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }
+
+// Init options with tuning session results instead of default values. Useful to
+// get correct bench signature after a tuning session or to test tuned values.
+// Just copy fishtest tuning results in a tune_result.txt file and extract the
+// values with:
+//
+//  cat tune_result.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(\2);/'
+//
+// Then paste the output below, as the function body
+
+void Tune::read_results() {
+
+  /* ...insert your values here... */
+}
