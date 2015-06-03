@@ -170,6 +170,8 @@ Option& Option::operator=(const string& v) {
 #include <iostream>
 #include <sstream>
 
+static std::map<std::string, int> TuneResults;
+
 string Tune::next(string& names, bool pop) {
 
   string name;
@@ -196,6 +198,9 @@ static void make_option(const string& n, int v, const SetRange& r) {
   // Do not generate option when there is nothing to tune (ie. min = max)
   if (r(v).first == r(v).second)
       return;
+
+  if (TuneResults.count(n))
+      v = TuneResults[n];
 
   Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
 
@@ -228,10 +233,27 @@ template<> void Tune::Entry<Score>::init_option() {
 }
 
 template<> void Tune::Entry<Score>::read_option() {
-  if (Options.count("m" + name) || Options.count("e" + name))
-      value = make_score(Options["m" + name], Options["e" + name]);
+  if (Options.count("m" + name))
+      value = make_score(Options["m" + name], eg_value(value));
+
+  if (Options.count("e" + name))
+      value = make_score(mg_value(value), Options["e" + name]);
 }
 
 // Instead of a variable here we have a PostUpdate function: just call it
 template<> void Tune::Entry<Tune::PostUpdate>::init_option() {}
 template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }
+
+// Init options with tuning session results instead of default values. Useful to
+// get correct bench signature after a tuning session or to test tuned values.
+// Just copy fishtest tuning results in a tune_result.txt file and extract the
+// values with:
+//
+//  cat tune_result.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(\2);/'
+//
+// Then paste the output below, as the function body
+
+void Tune::read_results() {
+
+  /* ...insert your values here... */
+}
