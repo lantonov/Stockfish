@@ -135,9 +135,7 @@ public:
   static int add(const std::string& names, Args&&... args) {
     return instance().add(SetDefaultRange, names.substr(1, names.size() - 2), args...); // Remove trailing parenthesis
   }
-
-  static void init() { for (auto& e : instance().list) e->init_option(); } // Deferred, due to UCI::Options access
-
+  static void init() { for (auto& e : instance().list) e->init_option(); read_options(); } // Deferred, due to UCI::Options access
   static void read_options() { for (auto& e : instance().list) e->read_option(); }
 };
 

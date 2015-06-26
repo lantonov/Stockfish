@@ -199,12 +199,9 @@ static void make_option(const string& n, int v, const SetRange& r) {
   if (r(v).first == r(v).second)
       return;
 
-<<<<<<< HEAD
-=======
   if (TuneResults.count(n))
       v = TuneResults[n];
 
->>>>>>> d40d0ce55d8bcd2cb275132465b8478775395f8f
   Options[n] << UCI::Option(v, r(v).first, r(v).second, on_tune);
 
   // Print formatted parameters, ready to be copy-pasted in fishtest
