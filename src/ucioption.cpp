@@ -170,6 +170,7 @@ Option& Option::operator=(const string& v) {
 #include <iostream>
 #include <sstream>
 
+BoolConditions Conditions;
 static std::map<std::string, int> TuneResults;
 
 string Tune::next(string& names, bool pop) {
@@ -233,7 +234,6 @@ template<> void Tune::Entry<Score>::init_option() {
 }
 
 template<> void Tune::Entry<Score>::read_option() {
-
   if (Options.count("m" + name))
       value = make_score(Options["m" + name], eg_value(value));
 
@@ -244,6 +244,25 @@ template<> void Tune::Entry<Score>::read_option() {
 // Instead of a variable here we have a PostUpdate function: just call it
 template<> void Tune::Entry<Tune::PostUpdate>::init_option() {}
 template<> void Tune::Entry<Tune::PostUpdate>::read_option() { value(); }
+
+
+// Set binary conditions according to a probability that depends
+// on the corresponding parameter value.
+
+void BoolConditions::set() {
+
+  static PRNG rng(now());
+  static bool startup = true; // To workaround fishtest bench
+
+  for (size_t i = 0; i < binary.size(); i++)
+      binary[i] = !startup && (values[i] + int(rng.rand<unsigned>() % variance) > threshold);
+
+  startup = false;
+
+  for (size_t i = 0; i < binary.size(); i++)
+      sync_cout << binary[i] << sync_endl;
+}
+
 
 // Init options with tuning session results instead of default values. Useful to
 // get correct bench signature after a tuning session or to test tuned values.
