@@ -27,7 +27,7 @@ namespace PSQT {
 // type on a given square a (middlegame, endgame) score pair is assigned. Table
 // is defined for files A..D and white side: it is symmetric for black side and
 // second half of the files.
-const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
+Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
   { },
   { // Pawn
    { S(  0, 0), S(  0, 0), S(  0, 0), S( 0, 0) },
@@ -60,14 +60,14 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-45,-65), S(-21,-42), S(-29,-46), S(-39,-27) }
   },
   { // Rook
-   S(-10,-10), S( -7, -7), S(-2, -2), S( 0, 0),  
-   S( -7, -9), S( -4, -6), S(-1, -1), S( 3, 3),  
-   S(  0, -7), S(  3, -5), S( 6,  1), S( 8, 4),  
-   S( -5, -5), S( -1, -1), S( 2,  2), S( 5, 5), 
-   S( -3, -3), S(  2,  2), S( 4,  4), S( 6, 6),  
-   S(  0,  0), S(  3,  3), S( 6,  6), S( 8, 8),  
-   S(  3,  3), S(  7,  7), S(11, 11), S(15,15),  
-   S(  1,  1), S(  5,  5), S( 9,  9), S(13,13)
+   { S(-10,-10), S( -7, -7), S(-2, -2), S( 0, 0) },  
+   { S( -7, -9), S( -4, -6), S(-1, -1), S( 3, 3) },  
+   { S(  0, -7), S(  3, -5), S( 6,  1), S( 8, 4) },  
+   { S( -5, -5), S( -1, -1), S( 2,  2), S( 5, 5) }, 
+   { S( -3, -3), S(  2,  2), S( 4,  4), S( 6, 6) },  
+   { S(  0,  0), S(  3,  3), S( 6,  6), S( 8, 8) },  
+   { S(  3,  3), S(  7,  7), S(11, 11), S(15,15) },  
+   { S(  1,  1), S(  5,  5), S( 9,  9), S(13,13) }
   },
   { // Queen
    { S( 0,-70), S(-3,-57), S(-4,-41), S(-1,-29) },
@@ -115,4 +115,7 @@ void init() {
   }
 }
 
+TUNE(SetRange(-500, 500), Bonus, SetDefaultRange);
+
 } // namespace PSQT
+
