@@ -123,7 +123,7 @@ void init() {
   }
 }
 
-TUNE(SetRange(-500, 500), Bonus, SetDefaultRange);
+// TUNE(SetRange(-500, 500), Bonus, SetDefaultRange);
 
 } // namespace PSQT
 
