@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 
 using namespace std;
 
-extern void benchmark(const Position& pos, istream& is);
+extern vector<string> setup_bench(const Position&, istream&);
 
 namespace {
 
@@ -89,11 +89,11 @@ namespace {
 
     // Read option name (can contain spaces)
     while (is >> token && token != "value")
-        name += string(" ", name.empty() ? 0 : 1) + token;
+        name += (name.empty() ? "" : " ") + token;
 
     // Read option value (can contain spaces)
     while (is >> token)
-        value += string(" ", value.empty() ? 0 : 1) + token;
+        value += (value.empty() ? "" : " ") + token;
 
     if (Options.count(name))
         Options[name] = value;
@@ -128,10 +128,53 @@ namespace {
         else if (token == "nodes")     is >> limits.nodes;
         else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
+        else if (token == "perft")     is >> limits.perft;
         else if (token == "infinite")  limits.infinite = 1;
         else if (token == "ponder")    ponderMode = true;
 
     Threads.start_thinking(pos, states, limits, ponderMode);
+  }
+
+
+  // bench() is called when engine receives the "bench" command. Firstly
+  // a list of UCI commands is setup according to bench parameters, then
+  // it is run one by one printing a summary at the end.
+
+  void bench(Position& pos, istream& args, StateListPtr& states) {
+
+    string token;
+    uint64_t num, nodes = 0, cnt = 1;
+
+    vector<string> list = setup_bench(pos, args);
+    num = count_if(list.begin(), list.end(), [](string s) { return s.find("go ") == 0; });
+
+    TimePoint elapsed = now();
+
+    for (const auto& cmd : list)
+    {
+        istringstream is(cmd);
+        is >> skipws >> token;
+
+        if (token == "go")
+        {
+            cerr << "\nPosition: " << cnt++ << '/' << num << endl;
+            go(pos, is, states);
+            Threads.main()->wait_for_search_finished();
+            nodes += Threads.nodes_searched();
+        }
+        else if (token == "setoption")  setoption(is);
+        else if (token == "position")   position(pos, is, states);
+        else if (token == "ucinewgame") Search::clear();
+    }
+
+    elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+
+    dbg_print(); // Just before exiting
+
+    cerr << "\n==========================="
+         << "\nTotal time (ms) : " << elapsed
+         << "\nNodes searched  : " << nodes
+         << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
   }
 
 } // namespace
@@ -190,20 +233,9 @@ void UCI::loop(int argc, char* argv[]) {
 
       // Additional custom non-UCI commands, mainly for debugging
       else if (token == "flip")  pos.flip();
-      else if (token == "bench") benchmark(pos, is);
+      else if (token == "bench") bench(pos, is, states);
       else if (token == "d")     sync_cout << pos << sync_endl;
       else if (token == "eval")  sync_cout << Eval::trace(pos) << sync_endl;
-      else if (token == "perft")
-      {
-          int depth;
-          stringstream ss;
-
-          is >> depth;
-          ss << Options["Hash"] << " " << Options["Threads"]
-             << " " << depth << " current perft";
-
-          benchmark(pos, ss);
-      }
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 

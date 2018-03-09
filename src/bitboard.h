@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ const std::string pretty(Bitboard b);
 
 }
 
+const Bitboard AllSquares = ~Bitboard(0);
 const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
 const Bitboard FileABB = 0x0101010101010101ULL;
@@ -125,10 +126,9 @@ inline Bitboard& operator^=(Bitboard& b, Square s) {
   return b ^= SquareBB[s];
 }
 
-inline bool more_than_one(Bitboard b) {
+constexpr bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
-
 
 /// rank_bb() and file_bb() return a bitboard representing all the squares on
 /// the given file or rank.
@@ -150,14 +150,34 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// shift() moves a bitboard one step along direction D. Mainly for pawns
+/// make_bitboard() returns a bitboard from a list of squares
 
-template<Square D>
-inline Bitboard shift(Bitboard b) {
+constexpr Bitboard make_bitboard() { return 0; }
+
+template<typename ...Squares>
+constexpr Bitboard make_bitboard(Square s, Squares... squares) {
+  return (1ULL << s) | make_bitboard(squares...);
+}
+
+
+/// shift() moves a bitboard one step along direction D (mainly for pawns)
+
+template<Direction D>
+constexpr Bitboard shift(Bitboard b) {
   return  D == NORTH      ?  b             << 8 : D == SOUTH      ?  b             >> 8
         : D == NORTH_EAST ? (b & ~FileHBB) << 9 : D == SOUTH_EAST ? (b & ~FileHBB) >> 7
         : D == NORTH_WEST ? (b & ~FileABB) << 7 : D == SOUTH_WEST ? (b & ~FileABB) >> 9
         : 0;
+}
+
+
+/// pawn_attacks_bb() returns the pawn attacks for the given color from the
+/// squares in the given bitboard.
+
+template<Color C>
+constexpr Bitboard pawn_attacks_bb(Bitboard b) {
+  return C == WHITE ? shift<NORTH_WEST>(b) | shift<NORTH_EAST>(b)
+                    : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
 
@@ -179,9 +199,9 @@ inline Bitboard between_bb(Square s1, Square s2) {
 }
 
 
-/// forward_ranks_bb() returns a bitboard representing all the squares on all the ranks
-/// in front of the given one, from the point of view of the given color. For
-/// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
+/// forward_ranks_bb() returns a bitboard representing the squares on all the ranks
+/// in front of the given one, from the point of view of the given color. For instance,
+/// forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
 
 inline Bitboard forward_ranks_bb(Color c, Square s) {
   return ForwardRanksBB[c][rank_of(s)];

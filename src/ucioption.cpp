@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -53,10 +53,11 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 
 void init(OptionsMap& o) {
 
-  const int MaxHashMB = Is64Bit ? 1024 * 1024 : 2048;
+  // at most 2^32 clusters.
+  const int MaxHashMB = Is64Bit ? 131072 : 2048;
 
   o["Debug Log File"]        << Option("", on_logger);
-  o["Contempt"]              << Option(0, -100, 100);
+  o["Contempt"]              << Option(12, -100, 100);
   o["Threads"]               << Option(1, 1, 512, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
@@ -64,6 +65,8 @@ void init(OptionsMap& o) {
   o["MultiPV"]               << Option(1, 1, 500);
   o["Skill Level"]           << Option(20, 0, 20);
   o["Move Overhead"]         << Option(30, 0, 5000);
+  o["Minimum Thinking Time"] << Option(20, 0, 5000);
+  o["Slow Mover"]            << Option(84, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
@@ -269,10 +272,10 @@ void BoolConditions::set() {
 
 // Init options with tuning session results instead of default values. Useful to
 // get correct bench signature after a tuning session or to test tuned values.
-// Just copy fishtest tuning results in a tune_result.txt file and extract the
+// Just copy fishtest tuning results in a result.txt file and extract the
 // values with:
 //
-//  cat tune_result.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(\2);/'
+// cat results.txt | sed 's/^param: \([^,]*\), best: \([^,]*\).*/  TuneResults["\1"] = int(round(\2));/'
 //
 // Then paste the output below, as the function body
 
