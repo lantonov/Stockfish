@@ -23,6 +23,11 @@
 #undef  _WIN32_WINNT
 #define _WIN32_WINNT 0x0601 // Force to include needed API prototypes
 #endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <windows.h>
 // The needed Windows API for processor groups could be missed from old Windows
 // versions, so instead of calling them directly (forcing the linker to resolve
@@ -284,7 +289,7 @@ int get_group(size_t idx) {
 
   // Early exit if the needed API is not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun1 = (fun1_t)GetProcAddress(k32, "GetLogicalProcessorInformationEx");
+  auto fun1 = (fun1_t)(void(*)())GetProcAddress(k32, "GetLogicalProcessorInformationEx");
   if (!fun1)
       return -1;
 
@@ -352,8 +357,8 @@ void bindThisThread(size_t idx) {
 
   // Early exit if the needed API are not available at runtime
   HMODULE k32 = GetModuleHandle("Kernel32.dll");
-  auto fun2 = (fun2_t)GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
-  auto fun3 = (fun3_t)GetProcAddress(k32, "SetThreadGroupAffinity");
+  auto fun2 = (fun2_t)(void(*)())GetProcAddress(k32, "GetNumaNodeProcessorMaskEx");
+  auto fun3 = (fun3_t)(void(*)())GetProcAddress(k32, "SetThreadGroupAffinity");
 
   if (!fun2 || !fun3)
       return;

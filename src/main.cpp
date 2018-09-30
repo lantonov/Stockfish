@@ -44,8 +44,7 @@ int main(int argc, char* argv[]) {
   Bitbases::init();
   Search::init();
   Pawns::init();
-  Tablebases::init(Options["SyzygyPath"]);
-  TT.resize(Options["Hash"]);
+  Tablebases::init(Options["SyzygyPath"]); // After Bitboards are set
   Threads.set(Options["Threads"]);
   Search::clear(); // After threads are up
 
