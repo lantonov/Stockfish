@@ -29,7 +29,7 @@ namespace {
   ExtMove* generate_castling(const Position& pos, ExtMove* moveList) {
 
     constexpr CastlingRight Cr = Us | Cs;
-    constexpr bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
+    constexpr bool KingSide = (Cs == KING_SIDE);
 
     if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
         return moveList;
@@ -278,7 +278,7 @@ namespace {
             *moveList++ = make_move(ksq, pop_lsb(&b));
     }
 
-    if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(Us))
+    if (Type != CAPTURES && Type != EVASIONS && pos.castling_rights(Us))
     {
         if (pos.is_chess960())
         {

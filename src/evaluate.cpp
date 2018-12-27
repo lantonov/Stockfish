@@ -152,26 +152,25 @@ namespace {
   };
 
   // Assorted bonuses and penalties
-  constexpr Score BishopPawns        = S(  2,  6);
-  constexpr Score CloseEnemies       = S(  2,  0);
-  constexpr Score CorneredBishop     = S( 50, 47);
-  constexpr Score Hanging            = S( 62, 33);
-  constexpr Score KingProtector      = S(  1,  1);
-  constexpr Score KnightOnQueen      = S( 20, 10);
-  constexpr Score LongDiagonalBishop = S( 46, 15);
-  constexpr Score MinorBehindPawn    = S( 14,  0);
-  constexpr Score Overload           = S(  9,  2);
-  constexpr Score PawnlessFlank      = S( 14, 79);
-  constexpr Score RestrictedPiece    = S(  5,  5);
-  constexpr Score RookOnPawn         = S( 11, 29);
-  constexpr Score SliderOnQueen      = S( 48, 20);
-  constexpr Score ThreatByKing       = S( 20, 88);
-  constexpr Score ThreatByPawnPush   = S( 46, 48);
-  constexpr Score ThreatByRank       = S( 10,  1);
-  constexpr Score ThreatBySafePawn   = S(153,106);
-  constexpr Score TrappedRook        = S( 95,  3);
-  constexpr Score WeakQueen          = S( 46,  9);
-  constexpr Score WeakUnopposedPawn  = S( 12, 24);
+  constexpr Score BishopPawns        = S(  3,  7);
+  constexpr Score CloseEnemies       = S(  8,  0);
+  constexpr Score CorneredBishop     = S( 50, 50);
+  constexpr Score Hanging            = S( 69, 36);
+  constexpr Score KingProtector      = S(  7,  8);
+  constexpr Score KnightOnQueen      = S( 16, 12);
+  constexpr Score LongDiagonalBishop = S( 45,  0);
+  constexpr Score MinorBehindPawn    = S( 18,  3);
+  constexpr Score PawnlessFlank      = S( 17, 95);
+  constexpr Score RestrictedPiece    = S(  7,  7);
+  constexpr Score RookOnPawn         = S( 10, 32);
+  constexpr Score SliderOnQueen      = S( 59, 18);
+  constexpr Score ThreatByKing       = S( 24, 89);
+  constexpr Score ThreatByPawnPush   = S( 48, 39);
+  constexpr Score ThreatByRank       = S( 13,  0);
+  constexpr Score ThreatBySafePawn   = S(173, 94);
+  constexpr Score TrappedRook        = S( 96,  4);
+  constexpr Score WeakQueen          = S( 49, 15);
+  constexpr Score WeakUnopposedPawn  = S( 12, 23);
 
 #undef S
 
@@ -275,6 +274,7 @@ namespace {
             kingRing[Us] |= shift<EAST>(kingRing[Us]);
 
         kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
+        kingRing[Us] &= ~double_pawn_attacks_bb<Us>(pos.pieces(Us, PAWN));
         kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     }
   }
@@ -382,7 +382,7 @@ namespace {
             {
                 File kf = file_of(pos.square<KING>(Us));
                 if ((kf < FILE_E) == (file_of(s) < kf))
-                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
+                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.castling_rights(Us));
             }
         }
 
@@ -513,7 +513,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies
-    nonPawnEnemies = pos.pieces(Them) ^ pos.pieces(Them, PAWN);
+    nonPawnEnemies = pos.pieces(Them) & ~pos.pieces(Them, PAWN);
 
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
@@ -553,16 +553,14 @@ namespace {
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
 
-        score += Hanging * popcount(weak & ~attackedBy[Them][ALL_PIECES]);
-
-        b = weak & nonPawnEnemies & attackedBy[Them][ALL_PIECES];
-        score += Overload * popcount(b);
+        b =  ~attackedBy[Them][ALL_PIECES]
+           | (nonPawnEnemies & attackedBy2[Us]);
+        score += Hanging * popcount(weak & b);
     }
 
     // Bonus for restricting their piece moves
     restricted =   attackedBy[Them][ALL_PIECES]
-                & ~attackedBy[Them][PAWN]
-                & ~attackedBy2[Them]
+                & ~stronglyProtected
                 &  attackedBy[Us][ALL_PIECES];
     score += RestrictedPiece * popcount(restricted);
 
