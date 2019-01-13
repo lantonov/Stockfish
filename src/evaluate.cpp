@@ -152,25 +152,25 @@ namespace {
   };
 
   // Assorted bonuses and penalties
-  constexpr Score BishopPawns        = S(  4,  5);
-  constexpr Score CloseEnemies       = S(  9,  0);
-  constexpr Score CorneredBishop     = S( 50, 52);
-  constexpr Score Hanging            = S( 70, 38);
-  constexpr Score KingProtector      = S(  5,  8);
-  constexpr Score KnightOnQueen      = S( 16, 11);
-  constexpr Score LongDiagonalBishop = S( 45,  0);
-  constexpr Score MinorBehindPawn    = S( 19,  2);
-  constexpr Score PawnlessFlank      = S( 16, 97);
-  constexpr Score RestrictedPiece    = S(  8,  6);
-  constexpr Score RookOnPawn         = S( 10, 31);
-  constexpr Score SliderOnQueen      = S( 60, 18);
-  constexpr Score ThreatByKing       = S( 21, 85);
-  constexpr Score ThreatByPawnPush   = S( 46, 38);
-  constexpr Score ThreatByRank       = S( 11,  0);
-  constexpr Score ThreatBySafePawn   = S(173, 92);
-  constexpr Score TrappedRook        = S( 96,  2);
-  constexpr Score WeakQueen          = S( 49, 13);
-  constexpr Score WeakUnopposedPawn  = S( 12, 23);
+  constexpr Score BishopPawns        = S(  3,  4);
+  constexpr Score CloseEnemies       = S(  8,  0);
+  constexpr Score CorneredBishop     = S( 51, 49);
+  constexpr Score Hanging            = S( 66, 38);
+  constexpr Score KingProtector      = S(  5,  4);
+  constexpr Score KnightOnQueen      = S( 11, 18);
+  constexpr Score LongDiagonalBishop = S( 46,  0);
+  constexpr Score MinorBehindPawn    = S( 10,  3);
+  constexpr Score PawnlessFlank      = S( 15, 93);
+  constexpr Score RestrictedPiece    = S(  4,  7);
+  constexpr Score RookOnPawn         = S(  9, 29);
+  constexpr Score SliderOnQueen      = S( 60, 21);
+  constexpr Score ThreatByKing       = S( 21, 93);
+  constexpr Score ThreatByPawnPush   = S( 46, 34);
+  constexpr Score ThreatByRank       = S( 13,  0);
+  constexpr Score ThreatBySafePawn   = S(169, 91);
+  constexpr Score TrappedRook        = S( 96,  3);
+  constexpr Score WeakQueen          = S( 43, 15);
+  constexpr Score WeakUnopposedPawn  = S( 16, 13);
 
 #undef S
 
