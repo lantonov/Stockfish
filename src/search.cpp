@@ -75,7 +75,7 @@ namespace {
 
   Depth reduction(bool i, Depth d, int mn) {
     int r = Reductions[d] * Reductions[mn];
-    return (r + 447) / 1024 + (!i && r > 827);
+    return (r + 447) / 1024 + (!i && r > 1232);
   }
 
   constexpr int futility_move_count(bool improving, Depth depth) {
