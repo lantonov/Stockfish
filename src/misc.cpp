@@ -47,7 +47,7 @@ typedef bool(*fun3_t)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
 #include <sstream>
 #include <vector>
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <stdlib.h>
 #include <sys/mman.h>
 #endif
@@ -297,25 +297,25 @@ void prefetch(void* addr) {
 /// aligned_ttmem_alloc will return suitably aligned memory, and if possible use large pages.
 /// The returned pointer is the aligned one, while the mem argument is the one that needs to be passed to free.
 /// With c++17 some of this functionality can be simplified.
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 
-void* aligned_ttmem_alloc(size_t allocSize, void** mem) {
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
   constexpr size_t alignment = 2 * 1024 * 1024; // assumed 2MB page sizes
   size_t size = ((allocSize + alignment - 1) / alignment) * alignment; // multiple of alignment
-  *mem = aligned_alloc(alignment, size);
-  madvise(*mem, allocSize, MADV_HUGEPAGE);
-  return *mem;
+  mem = aligned_alloc(alignment, size);
+  madvise(mem, allocSize, MADV_HUGEPAGE);
+  return mem;
 }
 
 #else
 
-void* aligned_ttmem_alloc(size_t allocSize, void** mem) {
+void* aligned_ttmem_alloc(size_t allocSize, void*& mem) {
 
   constexpr size_t alignment = 64; // assumed cache line size
   size_t size = allocSize + alignment - 1; // allocate some extra space
-  *mem = malloc(size);
-  void* ret = reinterpret_cast<void*>((uintptr_t(*mem) + alignment - 1) & ~uintptr_t(alignment - 1));
+  mem = malloc(size);
+  void* ret = reinterpret_cast<void*>((uintptr_t(mem) + alignment - 1) & ~uintptr_t(alignment - 1));
   return ret;
 }
 
