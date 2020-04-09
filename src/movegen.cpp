@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -52,8 +52,7 @@ namespace {
   template<Color Us, GenType Type>
   ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
 
-    // Compute some compile time parameters relative to the white side
-    constexpr Color     Them     = (Us == WHITE ? BLACK      : WHITE);
+    constexpr Color     Them     = ~Us;
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
     constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
     constexpr Direction Up       = pawn_push(Us);
@@ -215,9 +214,6 @@ namespace {
 
   template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target) {
-
-    constexpr CastlingRights OO  = Us & KING_SIDE;
-    constexpr CastlingRights OOO = Us & QUEEN_SIDE;
     constexpr bool Checks = Type == QUIET_CHECKS; // Reduce template instantations
 
     moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
@@ -233,14 +229,10 @@ namespace {
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
 
-        if (Type != CAPTURES && pos.can_castle(CastlingRights(OO | OOO)))
-        {
-            if (!pos.castling_impeded(OO) && pos.can_castle(OO))
-                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(OO));
-
-            if (!pos.castling_impeded(OOO) && pos.can_castle(OOO))
-                *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(OOO));
-        }
+        if ((Type != CAPTURES) && pos.can_castle(Us & ANY_CASTLING))
+            for(CastlingRights cr : { Us & KING_SIDE, Us & QUEEN_SIDE } )
+                if (!pos.castling_impeded(cr) && pos.can_castle(cr))
+                    *moveList++ = make<CASTLING>(ksq, pos.castling_rook_square(cr));
     }
 
     return moveList;
@@ -327,7 +319,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   while (sliders)
   {
       Square checksq = pop_lsb(&sliders);
-      sliderAttacks |= LineBB[checksq][ksq] ^ checksq;
+      sliderAttacks |= LineBB[ksq][checksq] ^ checksq;
   }
 
   // Generate evasions for king, capture and non capture moves

@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,11 +21,7 @@
 #include <algorithm>
 
 #include "types.h"
-
-Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
-  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg }
-};
+#include "bitboard.h"
 
 namespace PSQT {
 
@@ -79,8 +75,8 @@ constexpr Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-2,-75), S(-2,-52), S( 1,-43), S(-2,-36) }
   },
   { // King
-   { S(271,  1), S(327, 45), S(270, 85), S(192, 76) },
-   { S(278, 53), S(303,100), S(230,133), S(174,135) },
+   { S(271,  1), S(327, 45), S(271, 85), S(198, 76) },
+   { S(278, 53), S(303,100), S(234,133), S(179,135) },
    { S(195, 88), S(258,130), S(169,169), S(120,175) },
    { S(164,103), S(190,156), S(138,172), S( 98,172) },
    { S(154, 96), S(179,166), S(105,199), S( 70,199) },
@@ -112,17 +108,14 @@ void init() {
 
   for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
   {
-      PieceValue[MG][~pc] = PieceValue[MG][pc];
-      PieceValue[EG][~pc] = PieceValue[EG][pc];
-
       Score score = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          File f = map_to_queenside(file_of(s));
+          File f = edge_distance(file_of(s));
           psq[ pc][ s] = score + (type_of(pc) == PAWN ? PBonus[rank_of(s)][file_of(s)]
                                                       : Bonus[pc][rank_of(s)][f]);
-          psq[~pc][~s] = -psq[pc][s];
+          psq[~pc][flip_rank(s)] = -psq[pc][s];
       }
   }
 }
