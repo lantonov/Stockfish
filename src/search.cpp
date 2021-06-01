@@ -152,7 +152,7 @@ namespace {
 void Search::init() {
 
   for (int i = 1; i < MAX_MOVES; ++i)
-      Reductions[i] = int((21.3 + 2 * std::log(Threads.size())) * std::log(i + 0.25 * std::log(i)));
+      Reductions[i] = int(21.3 * std::log(i + 0.25 * std::log(i)));
 }
 
 
@@ -1097,6 +1097,10 @@ moves_loop: // When in check, search starts from here
                   return beta;
           }
       }
+      else if (   givesCheck
+               && depth > 6
+               && abs(ss->staticEval) > Value(100))
+          extension = 1;
 
       // Add extension to new depth
       newDepth += extension;
@@ -1121,7 +1125,7 @@ moves_loop: // When in check, search starts from here
       if (    depth >= 3
           &&  moveCount > 1 + 2 * rootNode
           && (  !captureOrPromotion
-              || cutNode
+              || (cutNode && (ss-1)->moveCount > 1)
               || (!PvNode && !formerPv))
           && (!PvNode || ss->ply > 1 || thisThread->id() % 4 != 3))
       {
@@ -1151,15 +1155,15 @@ moves_loop: // When in check, search starts from here
           if (singularQuietLMR)
               r--;
 
+          // Increase reduction for cut nodes (~3 Elo)
+          if (cutNode)
+              r += 1 + !captureOrPromotion;
+
           if (!captureOrPromotion)
           {
               // Increase reduction if ttMove is a capture (~3 Elo)
               if (ttCapture)
                   r++;
-
-              // Increase reduction for cut nodes (~3 Elo)
-              if (cutNode)
-                  r += 2;
 
               ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                              + (*contHist[0])[movedPiece][to_sq(move)]
@@ -1273,7 +1277,6 @@ moves_loop: // When in check, search starts from here
               else
               {
                   assert(value >= beta); // Fail high
-                  ss->statScore = 0;
                   break;
               }
           }
