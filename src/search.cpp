@@ -334,8 +334,10 @@ void Thread::search() {
 
   nodesLastExplosive = nodes;
   nodesLastNormal    = nodes;
-  state = EXPLOSION_NONE;
-  trend = SCORE_ZERO;
+  state              = EXPLOSION_NONE;
+  trend              = SCORE_ZERO;
+  optimism[ us]      = Value(25);
+  optimism[~us]      = -optimism[us];
 
   int searchAgainCounter = 0;
 
@@ -381,11 +383,14 @@ void Thread::search() {
               alpha = std::max(prev - delta,-VALUE_INFINITE);
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
-              // Adjust trend based on root move's previousScore (dynamic contempt)
-              int tr = 113 * prev / (abs(prev) + 147);
-
+              // Adjust trend and optimism based on root move's previousScore
+              int tr = sigmoid(prev, 0, 0, 147, 113, 1);
               trend = (us == WHITE ?  make_score(tr, tr / 2)
                                    : -make_score(tr, tr / 2));
+
+              int opt = sigmoid(prev, 0, 25, 147, 14464, 256);
+              optimism[ us] = Value(opt);
+              optimism[~us] = -optimism[us];
           }
 
           // Start with a small aspiration window and, in the case of a fail
@@ -812,7 +817,7 @@ namespace {
 
     // Step 7. Futility pruning: child node (~50 Elo).
     // The depth condition is important for mate finding.
-    if (   !PvNode
+    if (   !ss->ttPv
         &&  depth < 9
         &&  eval - futility_margin(depth, improving) >= beta
         &&  eval < 15000) // 50% larger than VALUE_KNOWN_WIN, but smaller than TB wins.
@@ -1049,17 +1054,19 @@ moves_loop: // When in check, search starts here
           }
           else
           {
+              int history =   (*contHist[0])[movedPiece][to_sq(move)]
+                            + (*contHist[1])[movedPiece][to_sq(move)]
+                            + (*contHist[3])[movedPiece][to_sq(move)];
+
               // Continuation history based pruning (~20 Elo)
-              if (lmrDepth < 5
-                  && (*contHist[0])[movedPiece][to_sq(move)]
-                  + (*contHist[1])[movedPiece][to_sq(move)]
-                  + (*contHist[3])[movedPiece][to_sq(move)] < -3000 * depth + 3000)
+              if (   lmrDepth < 5
+                  && history < -3000 * depth + 3000)
                   continue;
 
               // Futility pruning: parent node (~5 Elo)
               if (   !ss->inCheck
                   && lmrDepth < 8
-                  && ss->staticEval + 172 + 145 * lmrDepth <= alpha)
+                  && ss->staticEval + 172 + 145 * lmrDepth + history / 256 <= alpha)
                   continue;
 
               // Prune moves with negative SEE (~20 Elo)
@@ -1164,14 +1171,11 @@ moves_loop: // When in check, search starts here
       {
           Depth r = reduction(improving, depth, moveCount, rangeReduction > 2);
 
-          // Decrease reduction if on the PV (~2 Elo)
+          // Decrease reduction at some PvNodes (~2 Elo)
           if (   PvNode
-              && bestMoveCount <= 3)
+              && bestMoveCount <= 3
+              && beta - alpha >= thisThread->rootDelta / 4)
               r--;
-
-          // Increases reduction for PvNodes that have small window
-          if (PvNode && beta - alpha < thisThread->rootDelta / 4)
-              r++;
 
           // Decrease reduction if position is or has been on the PV
           // and node is not likely to fail low. (~3 Elo)
