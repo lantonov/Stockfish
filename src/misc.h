@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2022 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -104,6 +104,9 @@ class RunningAverage {
       // Test if average is strictly greater than rational a / b
       bool is_greater(int64_t a, int64_t b)
         { return b * average > a * PERIOD * RESOLUTION ; }
+
+      int64_t value()
+        { return average / (PERIOD * RESOLUTION); }
 
   private :
       static constexpr int64_t PERIOD     = 4096;
