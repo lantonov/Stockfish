@@ -173,11 +173,6 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum ExplosionState {
-  EXPLOSION_NONE,
-  MUST_CALM_DOWN
-};
-
 enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
@@ -455,7 +450,7 @@ constexpr Square to_sq(Move m) {
 }
 
 constexpr int from_to(Move m) {
- return m & 0xFFF;
+  return m & 0xFFF;
 }
 
 constexpr MoveType type_of(Move m) {

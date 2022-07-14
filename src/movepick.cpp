@@ -18,6 +18,7 @@
 
 #include <cassert>
 
+#include "bitboard.h"
 #include "movepick.h"
 
 namespace Stockfish {
@@ -87,8 +88,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const ButterflyHist
 
 /// MovePicker constructor for ProbCut: we generate captures with SEE greater
 /// than or equal to the given threshold.
-MovePicker::MovePicker(const Position& p, Move ttm, Value th, const CapturePieceToHistory* cph)
-           : pos(p), captureHistory(cph), ttMove(ttm), threshold(th)
+MovePicker::MovePicker(const Position& p, Move ttm, Value th, Depth d, const CapturePieceToHistory* cph)
+           : pos(p), captureHistory(cph), ttMove(ttm), threshold(th), depth(d)
 {
   assert(!pos.checkers());
 
@@ -105,17 +106,48 @@ void MovePicker::score() {
 
   static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
+  Bitboard threatened, threatenedByPawn, threatenedByMinor, threatenedByRook;
+  if constexpr (Type == QUIETS)
+  {
+      Color us = pos.side_to_move();
+      // squares threatened by pawns
+      threatenedByPawn  = pos.attacks_by<PAWN>(~us);
+      // squares threatened by minors or pawns
+      threatenedByMinor = pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
+      // squares threatened by rooks, minors or pawns
+      threatenedByRook  = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
+
+      // pieces threatened by pieces of lesser material value
+      threatened =  (pos.pieces(us, QUEEN) & threatenedByRook)
+                  | (pos.pieces(us, ROOK)  & threatenedByMinor)
+                  | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
+  }
+  else
+  {
+      // Silence unused variable warnings
+      (void) threatened;
+      (void) threatenedByPawn;
+      (void) threatenedByMinor;
+      (void) threatenedByRook;
+  }
+
   for (auto& m : *this)
       if constexpr (Type == CAPTURES)
-          m.value =  int(PieceValue[MG][pos.piece_on(to_sq(m))]) * 6
-                   + (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))];
+          m.value =  6 * int(PieceValue[MG][pos.piece_on(to_sq(m))])
+                   +     (*captureHistory)[pos.moved_piece(m)][to_sq(m)][type_of(pos.piece_on(to_sq(m)))];
 
       else if constexpr (Type == QUIETS)
           m.value =      (*mainHistory)[pos.side_to_move()][from_to(m)]
                    + 2 * (*continuationHistory[0])[pos.moved_piece(m)][to_sq(m)]
                    +     (*continuationHistory[1])[pos.moved_piece(m)][to_sq(m)]
                    +     (*continuationHistory[3])[pos.moved_piece(m)][to_sq(m)]
-                   +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)];
+                   +     (*continuationHistory[5])[pos.moved_piece(m)][to_sq(m)]
+                   +     (threatened & from_sq(m) ?
+                           (type_of(pos.moved_piece(m)) == QUEEN && !(to_sq(m) & threatenedByRook)  ? 50000
+                          : type_of(pos.moved_piece(m)) == ROOK  && !(to_sq(m) & threatenedByMinor) ? 25000
+                          :                                         !(to_sq(m) & threatenedByPawn)  ? 15000
+                          :                                                                           0)
+                          :                                                                           0);
 
       else // Type == EVASIONS
       {
@@ -169,11 +201,12 @@ top:
       endMoves = generate<CAPTURES>(pos, cur);
 
       score<CAPTURES>();
+      partial_insertion_sort(cur, endMoves, -3000 * depth);
       ++stage;
       goto top;
 
   case GOOD_CAPTURE:
-      if (select<Best>([&](){
+      if (select<Next>([&](){
                        return pos.see_ge(*cur, Value(-69 * cur->value / 1024)) ?
                               // Move losing capture to endBadCaptures to be tried later
                               true : (*endBadCaptures++ = *cur, false); }))
@@ -241,10 +274,10 @@ top:
       return select<Best>([](){ return true; });
 
   case PROBCUT:
-      return select<Best>([&](){ return pos.see_ge(*cur, threshold); });
+      return select<Next>([&](){ return pos.see_ge(*cur, threshold); });
 
   case QCAPTURE:
-      if (select<Best>([&](){ return   depth > DEPTH_QS_RECAPTURES
+      if (select<Next>([&](){ return   depth > DEPTH_QS_RECAPTURES
                                     || to_sq(*cur) == recaptureSquare; }))
           return *(cur - 1);
 
