@@ -25,13 +25,13 @@
 
 namespace Stockfish {
 
-alignas(64) uint8_t PopCnt16[1 << 16];
-alignas(64) uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+uint8_t PopCnt16[1 << 16];
+uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-alignas(64) Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-alignas(64) Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-alignas(64) Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-alignas(64) Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
+Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
+Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 alignas(64) Magic Magics[SQUARE_NB][2];
 
 namespace {
