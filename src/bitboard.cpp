@@ -37,8 +37,8 @@ alignas(64) Magic Magics[SQUARE_NB][2];
 namespace {
 
 // Precomputed attack tables
-alignas(64) Bitboard RookTable[0x19000];   // To store rook attacks
-alignas(64) Bitboard BishopTable[0x1480];  // To store bishop attacks
+Bitboard RookTable[0x19000];   // To store rook attacks
+Bitboard BishopTable[0x1480];  // To store bishop attacks
 
 void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]);
 
