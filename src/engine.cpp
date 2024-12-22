@@ -222,8 +222,12 @@ void Engine::resize_threads() {
 }
 
 void Engine::set_tt_size(size_t mb) {
+    // Wait for all threads to finish before resizing
     wait_for_search_finished();
-    tt.resize(mb, threads);
+
+    // Optimize hash table size based on thread count
+    size_t newSize = mb / threads.size();
+    tt.resize(newSize, threads);
 }
 
 void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
