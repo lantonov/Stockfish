@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 #include <string_view>
 #include <tuple>
 
-#include "../evaluate.h"
 #include "../position.h"
 #include "../types.h"
 #include "../uci.h"
@@ -42,15 +41,6 @@ namespace Stockfish::Eval::NNUE {
 
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
-
-void hint_common_parent_position(const Position&    pos,
-                                 const Networks&    networks,
-                                 AccumulatorCaches& caches) {
-    if (Eval::use_smallnet(pos))
-        networks.small.hint_common_access(pos, &caches.small);
-    else
-        networks.big.hint_common_access(pos, &caches.big);
-}
 
 namespace {
 // Converts a Value into (centi)pawns and writes it in a buffer.
