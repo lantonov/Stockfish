@@ -58,18 +58,16 @@ enum Stages {
 // Sort moves in descending order up to and including a given limit.
 // The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
-    for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p) {
-        if (p->value >= limit) {
-            ExtMove tmp = *p;
-            *p = *++sortedEnd;
-            ExtMove* q = sortedEnd;
-            while (q != begin && (q - 1)->value < tmp.value) {
+
+    for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p)
+        if (p->value >= limit)
+        {
+            ExtMove tmp = *p, *q;
+            *p          = *++sortedEnd;
+            for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
                 *q = *(q - 1);
-                --q;
-            }
             *q = tmp;
         }
-    }
 }
 
 }  // namespace
@@ -127,15 +125,13 @@ void MovePicker::score() {
 
     static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-    [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook,
-      threatenedPieces;
-    if constexpr (Type == QUIETS)
-    {
-        Color us = pos.side_to_move();
+    [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook, threatenedPieces;
+    const Color us = pos.side_to_move();
 
+    if constexpr (Type == QUIETS) {
         threatenedByPawn = pos.attacks_by<PAWN>(~us);
         threatenedByMinor =
-          pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
+		  pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
         threatenedByRook = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
 
         // Pieces threatened by pieces of lesser material value
@@ -144,57 +140,70 @@ void MovePicker::score() {
                          | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
     }
 
-    for (auto& m : *this)
-        if constexpr (Type == CAPTURES)
-            m.value =
-              7 * int(PieceValue[pos.piece_on(m.to_sq())])
-              + (*captureHistory)[pos.moved_piece(m)][m.to_sq()][type_of(pos.piece_on(m.to_sq()))];
+    for (auto& m : *this) {
+        switch (Type) {
+            case CAPTURES: {
+                const Piece capturedPiece = pos.piece_on(m.to_sq());
+                m.value = 7 * int(PieceValue[capturedPiece])
+                        + (*captureHistory)[pos.moved_piece(m)][m.to_sq()][type_of(capturedPiece)];
+                break;
+            }
 
-        else if constexpr (Type == QUIETS)
-        {
-            Piece     pc   = pos.moved_piece(m);
-            PieceType pt   = type_of(pc);
-            Square    from = m.from_sq();
-            Square    to   = m.to_sq();
+            case QUIETS: {
+                const Piece pc = pos.moved_piece(m);
+                const PieceType pt = type_of(pc);
+                const Square from = m.from_sq();
+                const Square to = m.to_sq();
 
-            // histories
-            m.value = 2 * (*mainHistory)[pos.side_to_move()][m.from_to()];
-            m.value += 2 * (*pawnHistory)[pawn_structure_index(pos)][pc][to];
-            m.value += (*continuationHistory[0])[pc][to];
-            m.value += (*continuationHistory[1])[pc][to];
-            m.value += (*continuationHistory[2])[pc][to];
-            m.value += (*continuationHistory[3])[pc][to];
-            m.value += (*continuationHistory[4])[pc][to] / 3;
-            m.value += (*continuationHistory[5])[pc][to];
+                // histories
+                m.value = 2 * (*mainHistory)[us][m.from_to()];
+                m.value += 2 * (*pawnHistory)[pawn_structure_index(pos)][pc][to];
+                for (int i = 0; i < 6; ++i) {
+                    m.value += (*continuationHistory[i])[pc][to];
+                }
+                m.value += (*continuationHistory[4])[pc][to] / 3;
 
-            // bonus for checks
-            m.value += bool(pos.check_squares(pt) & to) * 16384;
+                // bonus for checks
+                if (pos.check_squares(pt) & to) {
+                    m.value += 16384;
+                }
 
-            // bonus for escaping from capture
-            m.value += threatenedPieces & from ? (pt == QUEEN && !(to & threatenedByRook)   ? 51700
-                                                  : pt == ROOK && !(to & threatenedByMinor) ? 25600
-                                                  : !(to & threatenedByPawn)                ? 14450
-                                                                                            : 0)
-                                               : 0;
+                // bonus for escaping from capture
+                if (threatenedPieces & from) {
+                    if (pt == QUEEN && !(to & threatenedByRook)) {
+                        m.value += 51700;
+                    } else if (pt == ROOK && !(to & threatenedByMinor)) {
+                        m.value += 25600;
+                    } else if (!(to & threatenedByPawn)) {
+                        m.value += 14450;
+                    }
+                }
 
-            // malus for putting piece en prise
-            m.value -= (pt == QUEEN ? bool(to & threatenedByRook) * 49000
-                        : pt == ROOK && bool(to & threatenedByMinor) ? 24335
-                                                                     : 0);
+                // malus for putting piece en prise
+                if (pt == QUEEN && (to & threatenedByRook)) {
+                    m.value -= 49000;
+                } else if (pt == ROOK && (to & threatenedByMinor)) {
+                    m.value -= 24335;
+                }
 
-            if (ply < LOW_PLY_HISTORY_SIZE)
-                m.value += 8 * (*lowPlyHistory)[ply][m.from_to()] / (1 + 2 * ply);
+                if (ply < LOW_PLY_HISTORY_SIZE) {
+                    m.value += 8 * (*lowPlyHistory)[ply][m.from_to()] / (1 + 2 * ply);
+                }
+                break;
+            }
+
+            case EVASIONS: {
+                if (pos.capture_stage(m)) {
+                    m.value = PieceValue[pos.piece_on(m.to_sq())] + (1 << 28);
+                } else {
+                    m.value = (*mainHistory)[us][m.from_to()]
+                            + (*continuationHistory[0])[pos.moved_piece(m)][m.to_sq()]
+                            + (*pawnHistory)[pawn_structure_index(pos)][pos.moved_piece(m)][m.to_sq()];
+                }
+                break;
+            }
         }
-
-        else  // Type == EVASIONS
-        {
-            if (pos.capture_stage(m))
-                m.value = PieceValue[pos.piece_on(m.to_sq())] + (1 << 28);
-            else
-                m.value = (*mainHistory)[pos.side_to_move()][m.from_to()]
-                        + (*continuationHistory[0])[pos.moved_piece(m)][m.to_sq()]
-                        + (*pawnHistory)[pawn_structure_index(pos)][pos.moved_piece(m)][m.to_sq()];
-        }
+    }
 }
 
 // Returns the next move satisfying a predicate function.
